@@ -7,7 +7,7 @@ import com.staricka.aoc2019.util.AocInputStream;
 public class Day2 extends AocDay {
     @Override
     public void part1() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("/day2a.txt")) {
+        try (AocInputStream inputStream = new AocInputStream("day2a.txt")) {
             String input = inputStream.getAll();
             IntCodeProgram program = new IntCodeProgram(input);
             program.setValue(1, 12);
@@ -19,7 +19,7 @@ public class Day2 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("/day2a.txt")) {
+        try (AocInputStream inputStream = new AocInputStream("day2a.txt")) {
             String input = inputStream.getAll();
             for(int noun = 0; noun <= 99; noun++) {
                 for(int verb = 0; verb <= 99; verb++) {
@@ -38,7 +38,7 @@ public class Day2 extends AocDay {
 
     @Override
     public void test() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("/day2s.txt")) {
+        try (AocInputStream inputStream = new AocInputStream("day2s.txt")) {
             String input = inputStream.getAll();
             IntCodeProgram program = new IntCodeProgram(input);
             program.run();

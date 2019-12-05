@@ -12,7 +12,7 @@ public class AocInputStream implements AutoCloseable, Closeable {
     final BufferedReader reader;
 
     public AocInputStream(final String resourceName) {
-        final InputStream inputStream = getClass().getResourceAsStream(resourceName);
+        final InputStream inputStream = ClassLoader.getSystemResourceAsStream(resourceName);
         if (inputStream == null) {
             throw new RuntimeException("Resource not found: " + resourceName);
         }

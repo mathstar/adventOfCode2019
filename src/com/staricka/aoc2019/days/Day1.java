@@ -6,7 +6,7 @@ import com.staricka.aoc2019.util.AocInputStream;
 public class Day1 extends AocDay {
     @Override
     public void part1() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("/day1a.txt")) {
+        try (AocInputStream inputStream = new AocInputStream("day1a.txt")) {
             int fuelRequired = inputStream.lines().mapToInt(Integer::parseInt).map(this::computeFuelRequired).sum();
             logInfo("Fuel required: %d", fuelRequired);
         }
@@ -14,7 +14,7 @@ public class Day1 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("/day1a.txt")) {
+        try (AocInputStream inputStream = new AocInputStream("day1a.txt")) {
             int fuelRequired = inputStream.lines().mapToInt(Integer::parseInt).map(this::computeFuelRequiredWithCompensation).sum();
             logInfo("Fuel required: %d", fuelRequired);
         }

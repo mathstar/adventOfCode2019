@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 public class Day3 extends AocDay {
     @Override
     public void part1() throws Exception {
-        try (final AocInputStream inputStream = new AocInputStream("/day3a.txt")) {
+        try (final AocInputStream inputStream = new AocInputStream("day3a.txt")) {
             ExpandingGrid<GridValue> grid = generateGrid(inputStream.lines());
             int min = closestIntersection(grid);
             logInfo("Min distance to intersection: %d", min);
@@ -34,7 +34,7 @@ public class Day3 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-        try (final AocInputStream inputStream = new AocInputStream("/day3a.txt")) {
+        try (final AocInputStream inputStream = new AocInputStream("day3a.txt")) {
             ExpandingGrid<GridValue> grid = generateGrid(inputStream.lines());
             int min = grid.getFilledTiles().stream().filter(tile -> tile.getValue() instanceof WireUnit)
                     .filter(tile -> ((WireUnit) tile.getValue()).wires.size() > 1).mapToInt(
@@ -46,7 +46,7 @@ public class Day3 extends AocDay {
 
     @Override
     public void test() throws Exception {
-        try (final AocInputStream inputStream = new AocInputStream("/day3s1.txt")) {
+        try (final AocInputStream inputStream = new AocInputStream("day3s1.txt")) {
             ExpandingGrid<GridValue> grid = generateGrid(inputStream.lines());
             logInfo(grid.toString());
             int min = closestIntersection(grid);
