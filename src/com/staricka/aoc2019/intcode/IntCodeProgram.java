@@ -9,9 +9,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.FutureTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,6 +23,7 @@ public class IntCodeProgram {
     private boolean running;
     private BufferedReader inputReader;
     private BufferedWriter outputWriter;
+    private BufferedWriter backupWriter;
 
     public IntCodeProgram(final String program) throws Exception {
         memory = Arrays.stream(program.split(",")).map(Integer::parseInt).collect(Collectors.toList());
@@ -33,11 +36,33 @@ public class IntCodeProgram {
         outputWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
     }
 
+    public IntCodeProgram(final String program, final InputStream inputStream, final OutputStream outputStream,
+            final Writer backupWriter) throws Exception {
+        memory = Arrays.stream(program.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        inputReader = new BufferedReader(new InputStreamReader(inputStream));
+        outputWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+        this.backupWriter = new BufferedWriter(backupWriter);
+    }
+
     public IntCodeProgram(final String program, final Reader inputReader, final OutputStream outputStream)
             throws Exception {
         memory = Arrays.stream(program.split(",")).map(Integer::parseInt).collect(Collectors.toList());
         this.inputReader = new BufferedReader(inputReader);
         outputWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+    }
+
+    public IntCodeProgram(final String program, final Reader inputReader, final Writer outputWriter) throws Exception {
+        memory = Arrays.stream(program.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        this.inputReader = new BufferedReader(inputReader);
+        this.outputWriter = new BufferedWriter(outputWriter);
+    }
+
+    public IntCodeProgram(final String program, final Reader inputReader, final Writer outputWriter,
+            final Writer backupWriter) throws Exception {
+        memory = Arrays.stream(program.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        this.inputReader = new BufferedReader(inputReader);
+        this.outputWriter = new BufferedWriter(outputWriter);
+        this.backupWriter = new BufferedWriter(backupWriter);
     }
 
     public void run() throws Exception {
@@ -54,6 +79,13 @@ public class IntCodeProgram {
         if (outputWriter != null) {
             outputWriter.close();
         }
+    }
+
+    public FutureTask<Void> runAsync() throws Exception {
+        return new FutureTask<>(() -> {
+            run();
+            return null;
+        });
     }
 
     private void step() throws Exception {
@@ -146,7 +178,13 @@ public class IntCodeProgram {
     }
 
     private void writeOutput(final int output) throws Exception {
-        outputWriter.write(output + "\n");
+        try {
+            outputWriter.write(output + "\n");
+            outputWriter.flush();
+        } catch (Exception e) {
+            backupWriter.write(output + "\n");
+            backupWriter.flush();
+        }
     }
 
     public void printMemory() {
