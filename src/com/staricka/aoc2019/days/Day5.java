@@ -11,7 +11,7 @@ import java.io.StringReader;
 public class Day5 extends AocDay {
     @Override
     public void part1() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("day4a.txt")){
+        try (AocInputStream inputStream = new AocInputStream("day5a.txt")){
             String program = inputStream.getAll();
             String input = "1\n";
             IntCodeProgram intCodeProgram = new IntCodeProgram(program, new StringReader(input), System.out);
@@ -21,7 +21,7 @@ public class Day5 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-        try (AocInputStream inputStream = new AocInputStream("day4a.txt")){
+        try (AocInputStream inputStream = new AocInputStream("day5a.txt")){
             String program = inputStream.getAll();
             String input = "5\n";
             IntCodeProgram intCodeProgram = new IntCodeProgram(program, new StringReader(input), System.out);
