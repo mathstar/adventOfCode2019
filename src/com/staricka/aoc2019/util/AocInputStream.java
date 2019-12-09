@@ -27,6 +27,10 @@ public class AocInputStream implements AutoCloseable, Closeable {
         return reader.lines().collect(Collectors.joining("\n"));
     }
 
+    public String getLine() throws Exception {
+        return reader.readLine();
+    }
+
     @Override
     public void close() throws IOException {
         reader.close();

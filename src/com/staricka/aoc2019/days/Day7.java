@@ -25,21 +25,21 @@ public class Day7 extends AocDay {
     @Override
     public void part1() throws Exception {
         try (final AocInputStream inputStream = new AocInputStream("day7a.txt")) {
-            iteratePhaseSettings(inputStream.lines().findFirst().get());
+            iteratePhaseSettings(inputStream.getLine());
         }
     }
 
     @Override
     public void part2() throws Exception {
         try(final AocInputStream inputStream = new AocInputStream("day7a.txt")) {
-            iteratePhaseSettingsLoop(inputStream.lines().findFirst().get());
+            iteratePhaseSettingsLoop(inputStream.getLine());
         }
     }
 
     @Override
     public void test() throws Exception {
         try (final AocInputStream inputStream = new AocInputStream("day7s1.txt")) {
-            iteratePhaseSettings(inputStream.lines().findFirst().get());
+            iteratePhaseSettings(inputStream.getLine());
         }
     }
 

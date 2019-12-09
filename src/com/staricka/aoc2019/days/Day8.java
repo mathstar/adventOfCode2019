@@ -8,7 +8,7 @@ public class Day8 extends AocDay {
     @Override
     public void part1() throws Exception {
         try (AocInputStream inputStream = new AocInputStream("day8a.txt")) {
-            final SifImage sifImage = new SifImage(inputStream.lines().findFirst().get(), 25, 6);
+            final SifImage sifImage = new SifImage(inputStream.getLine(), 25, 6);
             logInfo("Checksum: %d", sifImage.checksum());
         }
     }
@@ -16,7 +16,7 @@ public class Day8 extends AocDay {
     @Override
     public void part2() throws Exception {
         try (AocInputStream inputStream = new AocInputStream("day8a.txt")) {
-            final SifImage sifImage = new SifImage(inputStream.lines().findFirst().get(), 25, 6);
+            final SifImage sifImage = new SifImage(inputStream.getLine(), 25, 6);
             System.out.println(sifImage.render().toString());
         }
     }
