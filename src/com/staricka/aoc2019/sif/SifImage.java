@@ -78,9 +78,9 @@ public class SifImage {
         public char getPrintValue() {
             switch (value) {
                 case '0':
-                    return '#';
-                case '1':
                     return ' ';
+                case '1':
+                    return '█';
             }
             return value;
         }
