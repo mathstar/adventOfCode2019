@@ -17,6 +17,10 @@ public abstract class AocDay {
         System.out.println(String.format(message, args));
     }
 
+    public static void logInfo(final Supplier<String> expensiveFunction) {
+        System.out.println(expensiveFunction.get());
+    }
+
     public static void logDebug(final String message, Object... args) {
         if (debug) {
             System.out.println(String.format(message, args));

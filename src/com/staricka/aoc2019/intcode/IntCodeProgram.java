@@ -4,17 +4,22 @@ import com.staricka.aoc2019.util.AocDay;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.FutureTask;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class IntCodeProgram {
@@ -34,6 +39,13 @@ public class IntCodeProgram {
         memory = Arrays.stream(program.split(",")).map(Long::parseLong).collect(Collectors.toList());
         inputReader = new BufferedReader(new InputStreamReader(inputStream));
         outputWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+    }
+
+    public IntCodeProgram(final String program, final Supplier<Integer> inputSupplier,
+            final Consumer<Integer> outputConsumer) {
+        memory = Arrays.stream(program.split(",")).map(Long::parseLong).collect(Collectors.toList());
+        inputReader = new SupplierReaderFaker(inputSupplier);
+        outputWriter = new ConsumerWriterFaker(outputConsumer);
     }
 
     public IntCodeProgram(final String program, final InputStream inputStream, final OutputStream outputStream,
@@ -255,4 +267,31 @@ public class IntCodeProgram {
         }
     }
 
+    private static class SupplierReaderFaker extends BufferedReader {
+        private final Supplier<Integer> supplier;
+
+        public SupplierReaderFaker(final Supplier<Integer> supplier) {
+            super(new StringReader(""));
+            this.supplier = supplier;
+        }
+
+        @Override
+        public String readLine() throws IOException {
+            return String.format("%d", supplier.get());
+        }
+    }
+
+    private static class ConsumerWriterFaker extends BufferedWriter {
+        private final Consumer<Integer> consumer;
+
+        public ConsumerWriterFaker(final Consumer<Integer> consumer) {
+            super(new StringWriter());
+            this.consumer = consumer;
+        }
+
+        @Override
+        public void write(String output) throws IOException {
+            consumer.accept(Integer.parseInt(output.trim()));
+        }
+    }
 }
