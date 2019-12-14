@@ -18,37 +18,32 @@ public class Day14 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-        try (final AocInputStream inputStream = new AocInputStream("day14s2.txt")) {
+        try (final AocInputStream inputStream = new AocInputStream("day14s4.txt")) {
             List<ReactionRule> reactionRules = inputStream.lines().map(ReactionRule::new).collect(Collectors.toList());
             Map<String, List<ReactionRule>> reactionRulesByOutput = reactionRules.stream().collect(Collectors.groupingBy(r -> r.getOutput().getSymbol()));
             long ore = 1000000000000L;
-            logInfo(findMinOre(reactionRulesByOutput));
-            logInfo("Possible fuel: %d", findMaxFuel(reactionRulesByOutput, ore / findMinOre(reactionRulesByOutput), ore));
+            logInfo("Possible fuel: %d", findMaxFuel(reactionRulesByOutput, ore));
         }
     }
 
     private long findMinOre(final Map<String, List<ReactionRule>> reactionRulesByOutput) {
         StateController controller = new StateController("ORE", new ReactionComponent("FUEL", 1), reactionRulesByOutput);
 
-        logInfo(controller.best(Comparator.<State, Long>comparing(s -> s.chemicalsNeeded.getNeeded("ORE")).reversed()).chemicalsNeeded.chemicalsNeeded);
         return controller.best(Comparator.<State, Long>comparing(s -> s.chemicalsNeeded.getNeeded("ORE")).reversed()).chemicalsNeeded.getNeeded("ORE");
     }
 
-    private long findMaxFuel(final Map<String, List<ReactionRule>> reactionRulesByOutput, final long start, final long ore) {
-        long max = start;
-        boolean done = false;
-        while (!done) {
-            StateController controller = new StateController("ORE", new ReactionComponent("FUEL", max + 1), reactionRulesByOutput);
-            long oreNeeded = controller.best(Comparator.<State, Long>comparing(s -> s.chemicalsNeeded.getNeeded("ORE")).reversed()).chemicalsNeeded.getNeeded("ORE");
-            if(oreNeeded <= ore) {
-                max++;
-            }
+    private long findMaxFuel(final Map<String, List<ReactionRule>> reactionRulesByOutput, final long ore) {
+        StateController controller = new StateController("ORE", new ReactionComponent("FUEL", 1), reactionRulesByOutput);
+        State ideal = controller.best(Comparator.<State, Long>comparing(s -> s.chemicalsNeeded.getNeeded("ORE")).reversed());
+        logInfo(ideal.rulesApplied);
 
-            if(oreNeeded >= ore) {
-                done = true;
-            }
+        long fuelProduced = 0;
+        while (ideal.chemicalsNeeded.getNeeded("ORE") < ore) {
+            fuelProduced++;
+            ideal.replayRules();
+            //logInfo(ideal.chemicalsNeeded.chemicalsNeeded);
         }
-        return max;
+        return fuelProduced;
     }
 
     private static class StateController {
@@ -79,14 +74,16 @@ public class Day14 extends AocDay {
         ReactionComponent bootstrapNeeded;
         ReactionRule bootstrapRule;
         StateController controller;
+        List<ReactionRule> rulesApplied;
 
         public State(ChemicalsNeeded chemicalsNeeded, Map<String, List<ReactionRule>> reactionRulesByOutput, StateController controller) {
             this.chemicalsNeeded = chemicalsNeeded;
             this.reactionRulesByOutput = reactionRulesByOutput;
             this.controller = controller;
+            rulesApplied = new ArrayList<>();
         }
 
-        public State(ChemicalsNeeded chemicalsNeeded, Map<String, List<ReactionRule>> reactionRulesByOutput, ReactionComponent bootstrapNeeded, ReactionRule bootstrapRule, StateController controller) {
+        public State(ChemicalsNeeded chemicalsNeeded, Map<String, List<ReactionRule>> reactionRulesByOutput, List<ReactionRule> rulesApplied, ReactionComponent bootstrapNeeded, ReactionRule bootstrapRule, StateController controller) {
             this.chemicalsNeeded = chemicalsNeeded;
             this.reactionRulesByOutput = reactionRulesByOutput;
             this.bootstrapNeeded = bootstrapNeeded;
@@ -97,7 +94,8 @@ public class Day14 extends AocDay {
         @Override
         public void run() {
             if(bootstrapNeeded != null && bootstrapRule != null) {
-                applyRule(bootstrapNeeded, bootstrapRule);
+                applyRule(bootstrapRule);
+                logRule(bootstrapRule);
             }
 
             while (!chemicalsNeeded.done()) {
@@ -105,21 +103,31 @@ public class Day14 extends AocDay {
                 List<ReactionRule> reactionRules = reactionRulesByOutput.get(needed.getSymbol());
                 if (reactionRules.size() == 1) {
                     ReactionRule rule = reactionRules.get(0);
-                    applyRule(needed, rule);
+                    applyRule(rule);
+                    logRule(rule);
                 } else {
                     List<ReactionRule> extraRules = reactionRules.subList(1, reactionRules.size());
-                    extraRules.stream().map(r -> new State(chemicalsNeeded.copy(), reactionRulesByOutput, needed, r, controller)).forEach(controller::branch);
+                    extraRules.stream().map(r -> new State(chemicalsNeeded.copy(), reactionRulesByOutput, rulesApplied, needed, r, controller)).forEach(controller::branch);
                     ReactionRule rule = reactionRules.get(0);
-                    applyRule(needed, rule);
+                    applyRule(rule);
+                    logRule(rule);
                 }
             }
         }
 
-        private void applyRule(final ReactionComponent needed, final ReactionRule rule) {
-            chemicalsNeeded.subtract(needed.getSymbol(), rule.getOutput().getQuantity());
+        private void applyRule(final ReactionRule rule) {
+            chemicalsNeeded.subtract(rule.getOutput().getSymbol(), rule.getOutput().getQuantity());
             for(ReactionComponent input : rule.getInputs()) {
                 chemicalsNeeded.add(input.getSymbol(), input.getQuantity());
             }
+        }
+
+        private void logRule(final ReactionRule rule) {
+            rulesApplied.add(rule);
+        }
+
+        private void replayRules() {
+            rulesApplied.forEach(this::applyRule);
         }
     }
 
