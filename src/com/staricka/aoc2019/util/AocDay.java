@@ -13,6 +13,10 @@ public abstract class AocDay {
         AocDay.debug = debug;
     }
 
+    public static void logInfo(final Object object) {
+        System.out.println(object);
+    }
+
     public static void logInfo(final String message, Object... args) {
         System.out.println(String.format(message, args));
     }
@@ -30,6 +34,12 @@ public abstract class AocDay {
     public static void logDebug(final Supplier<String> expensiveFunction) {
         if (debug) {
             System.out.println(expensiveFunction.get());
+        }
+    }
+
+    public static void logDebug(final Object object) {
+        if (debug) {
+            System.out.println(object);
         }
     }
 
