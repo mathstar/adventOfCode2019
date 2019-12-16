@@ -4,9 +4,9 @@ import com.staricka.aoc2019.util.AocDay;
 import com.staricka.aoc2019.util.AocInputStream;
 import com.staricka.aoc2019.util.data.PositionAndVelocity;
 import com.staricka.aoc2019.util.data.ThreeCoordinate;
+import org.apache.commons.math3.util.ArithmeticUtils;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,7 +25,11 @@ public class Day12 extends AocDay {
 
     @Override
     public void part2() throws Exception {
-
+        try (final AocInputStream inputStream = new AocInputStream("day12.txt")) {
+            final Satellites satellites = new Satellites();
+            inputStream.lines().map(ThreeCoordinate::new).map(PositionAndVelocity::new).forEach(satellites::add);
+            logInfo("Time to loop: %d", satellites.findLoop());
+        }
     }
 
     @Override
@@ -54,6 +58,7 @@ public class Day12 extends AocDay {
         }
 
         public void step() {
+            satellites = new ArrayList<>(satellites);
             for (int i = 0; i < satellites.size(); i++) {
                 for (int j = i + 1; j < satellites.size(); j++) {
                     PositionAndVelocity satelliteA = satellites.get(i);
@@ -75,6 +80,36 @@ public class Day12 extends AocDay {
             }
 
             satellites = satellites.stream().map(PositionAndVelocity::applyVelocity).collect(Collectors.toList());
+        }
+
+        public long findLoop() {
+            long steps = 0;
+            Long firstX = null;
+            Long firstY = null;
+            Long firstZ = null;
+
+            while (true) {
+                step();
+                steps++;
+
+                boolean xZero = satellites.stream().allMatch(s -> s.getVelocity().getX() == 0);
+                boolean yZero = satellites.stream().allMatch(s -> s.getVelocity().getY() == 0);
+                boolean zZero = satellites.stream().allMatch(s -> s.getVelocity().getZ() == 0);
+
+                if (xZero && firstX == null) {
+                    firstX = steps;
+                }
+                if (yZero && firstY == null) {
+                    firstY = steps;
+                }
+                if (zZero && firstZ == null) {
+                    firstZ = steps;
+                }
+                if (firstX != null && firstY != null & firstZ != null) {
+                    logInfo("fx %d fy %d fz %d", firstX, firstY, firstZ);
+                    return ArithmeticUtils.lcm(ArithmeticUtils.lcm(firstX, firstY), firstZ) * 2;
+                }
+            }
         }
 
         public int getEnergy() {
