@@ -15,7 +15,12 @@ import java.util.stream.IntStream;
 public class Day12 extends AocDay {
     @Override
     public void part1() throws Exception {
-
+        try (final AocInputStream inputStream = new AocInputStream("day12.txt")) {
+            final Satellites satellites = new Satellites();
+            inputStream.lines().map(ThreeCoordinate::new).map(PositionAndVelocity::new).forEach(satellites::add);
+            runSteps(1000, satellites);
+            logInfo("Total energy: %d", satellites.getEnergy());
+        }
     }
 
     @Override
@@ -29,10 +34,11 @@ public class Day12 extends AocDay {
             final Satellites satellites = new Satellites();
             inputStream.lines().map(ThreeCoordinate::new).map(PositionAndVelocity::new).forEach(satellites::add);
             runSteps(10, satellites);
+            logInfo(satellites.getEnergy());
         }
     }
 
-    private void runSteps(final int steps, Satellites satellites) {
+    private void runSteps(final int steps, final Satellites satellites) {
         IntStream.range(0, steps).forEach(step -> {
             logDebug(() -> String.format("After %d steps:\n%s\n", step, satellites));
             satellites.step();
@@ -55,20 +61,29 @@ public class Day12 extends AocDay {
                     boolean xGreater = satelliteA.getPosition().getX() > satelliteB.getPosition().getX();
                     boolean yGreater = satelliteA.getPosition().getY() > satelliteB.getPosition().getY();
                     boolean zGreater = satelliteA.getPosition().getZ() > satelliteB.getPosition().getZ();
-                    boolean xEqual = satelliteA.getPosition().getX() > satelliteB.getPosition().getX();
-                    boolean yEqual = satelliteA.getPosition().getY() > satelliteB.getPosition().getY();
-                    boolean zEqual = satelliteA.getPosition().getZ() > satelliteB.getPosition().getZ();
+                    boolean xEqual = satelliteA.getPosition().getX() == satelliteB.getPosition().getX();
+                    boolean yEqual = satelliteA.getPosition().getY() == satelliteB.getPosition().getY();
+                    boolean zEqual = satelliteA.getPosition().getZ() == satelliteB.getPosition().getZ();
 
-                    satellites.set(i, satelliteA.updateVelocity(
-                            satelliteA.getVelocity().add(xGreater ? -1 : 1, yGreater ? -1 : 1, zGreater ? -1 : 1)));
-                    satellites.set(j, satelliteB.updateVelocity(
-                            satelliteB.getVelocity().add(xGreater ? 1 : -1, yGreater ? 1 : -1, zGreater ? 1 : -1)));
+                    satellites.set(i, satelliteA.updateVelocity(satelliteA.getVelocity()
+                            .add(xGreater ? -1 : (xEqual ? 0 : 1), yGreater ? -1 : (yEqual ? 0 : 1),
+                                    zGreater ? -1 : (zEqual ? 0 : 1))));
+                    satellites.set(j, satelliteB.updateVelocity(satelliteB.getVelocity()
+                            .add(xGreater ? 1 : (xEqual ? 0 : -1), yGreater ? 1 : (yEqual ? 0 : -1),
+                                    zGreater ? 1 : (zEqual ? 0 : -1))));
                 }
             }
 
             satellites = satellites.stream().map(PositionAndVelocity::applyVelocity).collect(Collectors.toList());
         }
 
+        public int getEnergy() {
+            return satellites.stream()
+                    .mapToInt(s -> s.getPosition().absoluteComponentSum() * s.getVelocity().absoluteComponentSum())
+                    .sum();
+        }
+
+        @SuppressWarnings("OptionalGetWithoutIsPresent")
         private int getPadding(final Function<PositionAndVelocity, ThreeCoordinate> selectorA,
                 final Function<ThreeCoordinate, Integer> selectorB) {
             return satellites.stream().map(selectorA).map(selectorB).mapToInt(i -> String.valueOf(i).length()).max()
@@ -77,8 +92,8 @@ public class Day12 extends AocDay {
 
         @Override
         public String toString() {
-            return satellites.stream().map(s -> s
-                    .toPaddedString(getPadding(PositionAndVelocity::getPosition, ThreeCoordinate::getX),
+            return satellites.stream()
+                    .map(s -> s.toPaddedString(getPadding(PositionAndVelocity::getPosition, ThreeCoordinate::getX),
                             getPadding(PositionAndVelocity::getPosition, ThreeCoordinate::getY),
                             getPadding(PositionAndVelocity::getPosition, ThreeCoordinate::getZ),
                             getPadding(PositionAndVelocity::getVelocity, ThreeCoordinate::getX),
