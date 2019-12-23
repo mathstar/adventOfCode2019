@@ -40,8 +40,14 @@ public class Day14 extends AocDay {
         long fuelProduced = 0;
         while (ideal.chemicalsNeeded.getNeeded("ORE") < ore) {
             fuelProduced++;
-            ideal.replayRules();
+            //ideal.replayRules();
+            controller = new StateController(ideal, "FUEL", reactionRulesByOutput);
+            ideal = controller
+                    .best(Comparator.<State, Long>comparing(s -> s.chemicalsNeeded.getNeeded("ORE")).reversed());
             //logInfo(ideal.chemicalsNeeded.chemicalsNeeded);
+            if (ideal.chemicalsNeeded.chemicalsNeeded.values().stream().allMatch(x -> x >= 0)) {
+                logInfo("cycle");
+            }
         }
         return fuelProduced;
     }
@@ -49,9 +55,20 @@ public class Day14 extends AocDay {
     private static class StateController {
         List<State> states = new ArrayList<>();
 
-        private StateController(final String target, final ReactionComponent initial, final Map<String, List<ReactionRule>> reactionRulesByOutput) {
+        private StateController(final String target, final ReactionComponent initial,
+                final Map<String, List<ReactionRule>> reactionRulesByOutput) {
             ChemicalsNeeded chemicalsNeeded = new ChemicalsNeeded(target);
             chemicalsNeeded.add(initial.getSymbol(), initial.getQuantity());
+            State state = new State(chemicalsNeeded, reactionRulesByOutput, this);
+
+            states.add(state);
+            state.run();
+        }
+
+        private StateController(final State previous, final String target,
+                final Map<String, List<ReactionRule>> reactionRulesByOutput) {
+            ChemicalsNeeded chemicalsNeeded = previous.chemicalsNeeded;
+            chemicalsNeeded.add(target, 1);
             State state = new State(chemicalsNeeded, reactionRulesByOutput, this);
 
             states.add(state);
