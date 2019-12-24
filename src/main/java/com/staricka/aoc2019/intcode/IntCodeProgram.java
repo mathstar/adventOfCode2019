@@ -13,9 +13,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.FutureTask;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -48,6 +50,10 @@ public class IntCodeProgram {
         outputWriter = new ConsumerWriterFaker(outputConsumer);
     }
 
+    public IntCodeProgram(final String program, final Queue<Integer> inputQueue, final Queue<Integer> outputQueue) {
+        this(program, inputQueue::remove, outputQueue::add);
+    }
+
     public IntCodeProgram(final String program, final InputStream inputStream, final OutputStream outputStream,
             final Writer backupWriter) {
         memory = Arrays.stream(program.split(",")).map(Long::parseLong).collect(Collectors.toList());
@@ -76,7 +82,14 @@ public class IntCodeProgram {
         this.backupWriter = new BufferedWriter(backupWriter);
     }
 
-    public void run() throws Exception {
+    public IntCodeProgram(final IntCodeProgram source, final Supplier<Integer> inputSupplier,
+            final Consumer<Integer> outputConsumer) {
+        memory = new ArrayList<>(source.memory);
+        inputReader = new SupplierReaderFaker(inputSupplier);
+        outputWriter = new ConsumerWriterFaker(outputConsumer);
+    }
+
+    public void init() {
         programCounter = 0;
         relativeBase = 0;
         running = true;
@@ -84,6 +97,10 @@ public class IntCodeProgram {
             memory.add(0L);
         }
         AocDay.logDebug(memoryString());
+    }
+
+    public void run() throws Exception {
+        init();
         while (running) {
             step();
             AocDay.logDebug(this::memoryString);
@@ -96,6 +113,12 @@ public class IntCodeProgram {
         }
     }
 
+    public void runUntilInput() throws Exception {
+        do {
+            step();
+        } while (instructionPeek() != OpCode.STORE);
+    }
+
     public FutureTask<Void> runAsync() {
         return new FutureTask<>(() -> {
             run();
@@ -103,8 +126,13 @@ public class IntCodeProgram {
         });
     }
 
+    private OpCode instructionPeek() {
+        int numericOpCode = (int) getValue(programCounter);
+        return OpCode.lookupOpCode(numericOpCode);
+    }
+
     private void step() throws Exception {
-        int numericOpCode = (int)getValue(programCounter);
+        int numericOpCode = (int) getValue(programCounter);
         AocDay.logDebug("OpCode: %d, PC: %d, RB: %d", numericOpCode, programCounter, relativeBase);
         OpCode opCode = OpCode.lookupOpCode(numericOpCode);
         boolean incrementProgramCounter = true;
