@@ -28,8 +28,9 @@ public class Day16 extends AocDay {
             final String signalString = inputStream.getLine();
             final int messageOffset = Integer.parseInt(signalString.substring(0, 7));
             List<Integer> signal = repeatSignal(parseSignalString(signalString), 10000);
+            signal = signal.subList(messageOffset - 2, signal.size());
             for (int i = 0; i < 100; i++) {
-                signal = applyPhase(signal);
+                signal = applyPhaseTruncated(signal, messageOffset - 2);
             }
             final StringBuilder outputBuilder = new StringBuilder();
             for (int i = 0; i < 8; i++) {
@@ -90,6 +91,19 @@ public class Day16 extends AocDay {
             int sum = 0;
             for (int j = 0; j < input.size(); j++) {
                 sum += input.get(j) * getMultiple(i, j);
+            }
+            final String sumString = String.valueOf(sum);
+            output.add(Integer.valueOf(sumString.substring(sumString.length() - 1)));
+        }
+        return output;
+    }
+
+    private List<Integer> applyPhaseTruncated(final List<Integer> input, final int truncatedBy) {
+        final List<Integer> output = new ArrayList<>(input.size());
+        for (int i = 1; i <= input.size(); i++) {
+            int sum = 0;
+            for (int j = 0; j < input.size(); j++) {
+                sum += input.get(j) * getMultiple(i + truncatedBy, j + truncatedBy);
             }
             final String sumString = String.valueOf(sum);
             output.add(Integer.valueOf(sumString.substring(sumString.length() - 1)));
