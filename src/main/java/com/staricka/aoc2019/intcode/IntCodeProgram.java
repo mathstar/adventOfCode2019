@@ -89,6 +89,11 @@ public class IntCodeProgram {
         outputWriter = new ConsumerWriterFaker(outputConsumer);
     }
 
+    public IntCodeProgram(final IntCodeProgram source, final Queue<Integer> inputQueue,
+            final Queue<Integer> outputQueue) {
+        this(source, inputQueue::remove, outputQueue::add);
+    }
+
     public void init() {
         programCounter = 0;
         relativeBase = 0;

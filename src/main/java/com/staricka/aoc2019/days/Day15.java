@@ -7,14 +7,12 @@ import com.staricka.aoc2019.util.data.ExpandingGrid;
 import com.staricka.aoc2019.util.data.GridValue;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Queue;
-import java.util.Stack;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -22,9 +20,8 @@ public class Day15 extends AocDay {
     @Override
     public void part1() throws Exception {
         try (final AocInputStream inputStream = new AocInputStream("day15.txt")) {
-            final Mapper mapper = new Mapper(inputStream.getLine());
-            mapper.run();
-            mapper.join();
+            final GridTraverser gridTraverser = new GridTraverser(inputStream.getLine());
+            logInfo("Distance to oxygen: %d", gridTraverser.findOxygen());
         }
     }
 
@@ -33,298 +30,172 @@ public class Day15 extends AocDay {
 
     }
 
-    private boolean seekAtDepth(final int depth, final String program) {
-        final Queue<Integer> commandQueue = new ArrayDeque<>();
-        final Queue<Integer> statusQueue = new ArrayDeque<>();
-        final IntCodeProgram controller = new IntCodeProgram(program, commandQueue, statusQueue);
+    private class GridState {
+        private final int x;
+        private final int y;
+        private final GridState predecessor;
+        private final int distanceFromOrigin;
+
+        private IntCodeProgram programHere;
+        private Queue<Integer> commandQueue;
+        private Queue<Integer> statusQueue;
+
+        public GridState(final int x, final int y) {
+            this.x = x;
+            this.y = y;
+            this.predecessor = null;
+            this.distanceFromOrigin = 0;
+        }
+
+        public GridState(final int x, final int y, final GridState predecessor) {
+            this.x = x;
+            this.y = y;
+            this.predecessor = predecessor;
+            this.distanceFromOrigin = predecessor.distanceFromOrigin + 1;
+        }
+
+        public void setProgramHere(final IntCodeProgram programHere, final Queue<Integer> commandQueue,
+                final Queue<Integer> statusQueue) {
+            this.programHere = programHere;
+            this.commandQueue = commandQueue;
+            this.statusQueue = statusQueue;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public GridState getPredecessor() {
+            return predecessor;
+        }
+
+        public int getDistanceFromOrigin() {
+            return distanceFromOrigin;
+        }
+
+        public IntCodeProgram getProgramHere() {
+            return programHere;
+        }
+
+        public Queue<Integer> getCommandQueue() {
+            return commandQueue;
+        }
+
+        public Queue<Integer> getStatusQueue() {
+            return statusQueue;
+        }
     }
 
-    private boolean seekAtDepth(final int depth, final Queue<Integer> commandQueue, final Queue<Integer> statusQueue,
-            final IntCodeProgram controller) {
-
-    }
-
-    private class MapperController {
-        private final ScheduledThreadPoolExecutor executor;
-        private final List<MapperWorker> workers;
+    private class GridTraverser {
+        private final PriorityQueue<GridState> searchQueue;
+        private final String program;
         private final ExpandingGrid<MapValue> grid;
 
-        private int depth;
+        public GridTraverser(final String program) {
+            this.program = program;
 
-        public MapperController() {
-            executor = new ScheduledThreadPoolExecutor(50);
-            workers = new ArrayList<>();
+            searchQueue = new PriorityQueue<>(Comparator.comparing(GridState::getDistanceFromOrigin));
             grid = new ExpandingGrid<>();
-            depth = 0;
+
+            final GridState origin = new GridState(0, 0);
+            final Queue<Integer> originCommandQueue = new ArrayDeque<>();
+            final Queue<Integer> originStatusQueue = new ArrayDeque<>();
+            final IntCodeProgram originProgram = new IntCodeProgram(program, originCommandQueue, originStatusQueue);
+            origin.setProgramHere(originProgram, originCommandQueue, originStatusQueue);
+            searchQueue.add(origin);
+            grid.put(0, 0, MapValue.FREE);
         }
 
-        public int getAllowedDepth() {
-            return depth;
-        }
-
-        public MapValue getValue(final int x, final int y) {
-            return grid.get(x, y);
-        }
-
-        public synchronized void submitValue(final int x, final int y, final MapValue value) {
-            grid.put(x, y, value);
-        }
-
-        public synchronized void submitWorker(final MapperWorker mapperWorker) {
-            workers.add(mapperWorker);
-            executor.submit(mapperWorker::run);
-        }
-
-        public void run() throws Exception {
+        public int findOxygen() throws Exception {
             while (true) {
-                depth++;
-                final List<MapperWorker> startingWorkers = new ArrayList<>(workers);
-                for (final MapperWorker worker : startingWorkers) {
-                    while (worker.executedDepth < depth) {
-                        Thread.sleep(10);
+                final Integer distance = step();
+                if (distance != null) {
+                    return distance;
+                }
+            }
+        }
+
+        private Integer step() throws Exception {
+            final GridState state = searchQueue.poll();
+
+            Integer oxygenDistance = null;
+            for (final MovementCommand possibleCommand : MovementCommand.values()) {
+                final int candidateX = possibleCommand.applyX(state.getX());
+                final int candidateY = possibleCommand.applyY(state.getY());
+                final Queue<Integer> commandQueue = state.getCommandQueue();
+                final Queue<Integer> statusQueue = state.getStatusQueue();
+                final IntCodeProgram program = state.getProgramHere();
+
+                if (grid.get(candidateX, candidateY) == null) {
+                    commandQueue.add(possibleCommand.getCode());
+                    program.runUntilInput();
+                    final StatusCode statusCode = StatusCode.fromCode(statusQueue.poll());
+
+                    switch (statusCode) {
+                        case WALL: {
+                            grid.put(candidateX, candidateY, MapValue.WALL);
+                            break;
+                        }
+                        case FREE: {
+                            grid.put(candidateX, candidateY, MapValue.FREE);
+
+                            final GridState candidateState = new GridState(candidateX, candidateY, state);
+                            final Queue<Integer> candidateCommandQueue = new ArrayDeque<>();
+                            final Queue<Integer> candidateStatusQueue = new ArrayDeque<>();
+                            final IntCodeProgram candidateProgram =
+                                    new IntCodeProgram(program, candidateCommandQueue, candidateStatusQueue);
+                            candidateState
+                                    .setProgramHere(candidateProgram, candidateCommandQueue, candidateStatusQueue);
+
+                            commandQueue.add(possibleCommand.reverse().getCode());
+                            program.runUntilInput();
+                            statusQueue.remove();
+
+                            searchQueue.add(candidateState);
+                            break;
+                        }
+                        case OXYGEN: {
+                            grid.put(candidateX, candidateY, MapValue.OXYGEN);
+
+                            final GridState candidateState = new GridState(candidateX, candidateY, state);
+                            final Queue<Integer> candidateCommandQueue = new ArrayDeque<>();
+                            final Queue<Integer> candidateStatusQueue = new ArrayDeque<>();
+                            final IntCodeProgram candidateProgram =
+                                    new IntCodeProgram(program, candidateCommandQueue, candidateStatusQueue);
+                            candidateState
+                                    .setProgramHere(candidateProgram, candidateCommandQueue, candidateStatusQueue);
+
+                            commandQueue.add(possibleCommand.reverse().getCode());
+                            program.runUntilInput();
+                            statusQueue.remove();
+
+                            oxygenDistance = candidateState.getDistanceFromOrigin();
+
+                            searchQueue.add(candidateState);
+                            break;
+                        }
                     }
                 }
-
-                if (workers.stream().anyMatch(MapperWorker::isFoundOxygen)) {
-                    stop();
-                    return;
-                }
             }
-        }
-
-        private void stop() {
-            executor.shutdownNow();
-        }
-    }
-
-    private class MapperWorker {
-        private MapperController mapperController;
-        private IntCodeProgram botController;
-        private int executedDepth;
-        private boolean foundOxygen;
-        private int x;
-        private int y;
-
-        public MapperWorker(final MapperController mapperController, final String program) {
-            this.mapperController = mapperController;
-            executedDepth = 0;
-            foundOxygen = false;
-            botController = new IntCodeProgram(program);
-        }
-
-        public int getExecutedDepth() {
-            return executedDepth;
-        }
-
-        public boolean isFoundOxygen() {
-            return foundOxygen;
-        }
-
-        private Integer handleInput() {
-
-        }
-
-        private void handleOutput(final Integer output) {
-            final StatusCode statusCode = StatusCode.fromCode(output);
-            logInfo(grid);
-            final MovementCommand lastCommand = steps.peek();
-            switch (statusCode) {
-                case FREE: {
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.FREE);
-                    break;
-                }
-                case OXYGEN: {
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.OXYGEN);
-                    break;
-                }
-                case WALL: {
-                    int originalX = x;
-                    int originalY = y;
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.WALL);
-                    x = originalX;
-                    y = originalY;
-                    steps.pop();
-                    break;
-                }
-            }
-        }
-
-        private void updatePosition(final MovementCommand command) {
-            switch (command) {
-                case NORTH: {
-                    y--;
-                    break;
-                }
-                case EAST: {
-                    x++;
-                    break;
-                }
-                case SOUTH: {
-                    y++;
-                    break;
-                }
-                case WEST: {
-                    x--;
-                    break;
-                }
-            }
-        }
-
-        private MapValue getNorth() {
-            return mapperController.getValue(x, y - 1);
-        }
-
-        private MapValue getSouth() {
-            return mapperController.getValue(x, y + 1);
-        }
-
-        private MapValue getWest() {
-            return mapperController.getValue(x - 1, y);
-        }
-
-        private MapValue getEast() {
-            return mapperController.getValue(x + 1, y);
-        }
-
-        public void run() {
-        }
-    }
-
-    private class Mapper {
-        private final IntCodeProgram controller;
-        private final ExpandingGrid<MapValue> grid;
-        private final Stack<MovementCommand> steps;
-
-        private int x;
-        private int y;
-
-        private Thread controlThread;
-
-        public Mapper(final String program) {
-            controller = new IntCodeProgram(program, this::handleInput, this::handleOutput);
-            grid = new ExpandingGrid<>();
-            grid.put(0, 0, MapValue.FREE);
-            steps = new Stack<>();
-            x = 0;
-            y = 0;
-        }
-
-        private Integer handleInput() {
-            MovementCommand command = null;
-            if (getNorth() == null) {
-                command = MovementCommand.NORTH;
-            } else if (getEast() == null) {
-                command = MovementCommand.EAST;
-            } else if (getSouth() == null) {
-                command = MovementCommand.SOUTH;
-            } else if (getWest() == null) {
-                command = MovementCommand.WEST;
-            } else if (!steps.empty()) {
-                return steps.pop().reverse().getCode();
-            } else {
-                stop();
-                return -1;
-            }
-            steps.push(command);
-            return command.getCode();
-        }
-
-        private void handleOutput(final Integer output) {
-            final StatusCode statusCode = StatusCode.fromCode(output);
-            logInfo(grid);
-            final MovementCommand lastCommand = steps.peek();
-            switch (statusCode) {
-                case FREE: {
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.FREE);
-                    break;
-                }
-                case OXYGEN: {
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.OXYGEN);
-                    break;
-                }
-                case WALL: {
-                    int originalX = x;
-                    int originalY = y;
-                    updatePosition(lastCommand);
-                    grid.put(x, y, MapValue.WALL);
-                    x = originalX;
-                    y = originalY;
-                    steps.pop();
-                    break;
-                }
-            }
-        }
-
-        public void run() {
-            controlThread = new Thread(() -> {
-                try {
-                    controller.run();
-                } catch (final Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            controlThread.start();
-        }
-
-        public void join() throws Exception {
-            //controlThread.join();
-        }
-
-        private void stop() {
-            controlThread.interrupt();
-            logInfo(grid);
-        }
-
-        private void updatePosition(final MovementCommand command) {
-            switch (command) {
-                case NORTH: {
-                    y--;
-                    break;
-                }
-                case EAST: {
-                    x++;
-                    break;
-                }
-                case SOUTH: {
-                    y++;
-                    break;
-                }
-                case WEST: {
-                    x--;
-                    break;
-                }
-            }
-        }
-
-        private MapValue getNorth() {
-            return grid.get(x, y - 1);
-        }
-
-        private MapValue getSouth() {
-            return grid.get(x, y + 1);
-        }
-
-        private MapValue getWest() {
-            return grid.get(x - 1, y);
-        }
-
-        private MapValue getEast() {
-            return grid.get(x + 1, y);
+            return oxygenDistance;
         }
     }
 
     private enum MovementCommand {
-        NORTH(1), SOUTH(2), WEST(3), EAST(4);
+        NORTH(1, 0, -1), SOUTH(2, 0, 1), WEST(3, -1, 0), EAST(4, 1, 0);
 
         private final int code;
+        private final int diffX;
+        private final int diffY;
 
-        MovementCommand(final int code) {
+        MovementCommand(final int code, final int diffX, final int diffY) {
             this.code = code;
+            this.diffX = diffX;
+            this.diffY = diffY;
         }
 
         public int getCode() {
@@ -344,6 +215,14 @@ public class Day15 extends AocDay {
                 default:
                     throw new RuntimeException("Unknown direction");
             }
+        }
+
+        public int applyX(final int initial) {
+            return initial + diffX;
+        }
+
+        public int applyY(final int initial) {
+            return initial + diffY;
         }
     }
 
