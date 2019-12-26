@@ -22,12 +22,20 @@ public class Day15 extends AocDay {
         try (final AocInputStream inputStream = new AocInputStream("day15.txt")) {
             final GridTraverser gridTraverser = new GridTraverser(inputStream.getLine());
             logInfo("Distance to oxygen: %d", gridTraverser.findOxygen());
+            logInfo(gridTraverser.grid);
         }
     }
 
     @Override
     public void part2() throws Exception {
+        try (final AocInputStream inputStream = new AocInputStream("day15.txt")) {
+            final GridTraverser gridTraverser = new GridTraverser(inputStream.getLine());
+            gridTraverser.traverseFullSpace();
+            logInfo(gridTraverser.grid);
 
+            final GridTraverser oxygenTraverser = new GridTraverser(gridTraverser.oxygenState);
+            logInfo("Time to oxygen: %d", oxygenTraverser.traverseFullSpace());
+        }
     }
 
     private class GridState {
@@ -92,12 +100,11 @@ public class Day15 extends AocDay {
 
     private class GridTraverser {
         private final PriorityQueue<GridState> searchQueue;
-        private final String program;
         private final ExpandingGrid<MapValue> grid;
 
-        public GridTraverser(final String program) {
-            this.program = program;
+        private GridState oxygenState;
 
+        public GridTraverser(final String program) {
             searchQueue = new PriorityQueue<>(Comparator.comparing(GridState::getDistanceFromOrigin));
             grid = new ExpandingGrid<>();
 
@@ -110,6 +117,16 @@ public class Day15 extends AocDay {
             grid.put(0, 0, MapValue.FREE);
         }
 
+        public GridTraverser(final GridState start) {
+            searchQueue = new PriorityQueue<>(Comparator.comparing(GridState::getDistanceFromOrigin));
+            grid = new ExpandingGrid<>();
+
+            final GridState newOrigin = new GridState(0, 0);
+            newOrigin.setProgramHere(start.getProgramHere(), start.getCommandQueue(), start.statusQueue);
+            searchQueue.add(newOrigin);
+            grid.put(0, 0, MapValue.OXYGEN);
+        }
+
         public int findOxygen() throws Exception {
             while (true) {
                 final Integer distance = step();
@@ -117,6 +134,16 @@ public class Day15 extends AocDay {
                     return distance;
                 }
             }
+        }
+
+        public int traverseFullSpace() throws Exception {
+            int maxDistance = 0;
+            while (!searchQueue.isEmpty()) {
+                final GridState nextState = searchQueue.peek();
+                maxDistance = Math.max(maxDistance, nextState.distanceFromOrigin);
+                step();
+            }
+            return maxDistance;
         }
 
         private Integer step() throws Exception {
@@ -174,6 +201,7 @@ public class Day15 extends AocDay {
                             statusQueue.remove();
 
                             oxygenDistance = candidateState.getDistanceFromOrigin();
+                            oxygenState = candidateState;
 
                             searchQueue.add(candidateState);
                             break;
